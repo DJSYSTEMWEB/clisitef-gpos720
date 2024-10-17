@@ -60,8 +60,8 @@ android {
 }
 
 dependencies {
-    implementation files('src/main/kotlin/libs/clisitef-simulado.jar')
-    implementation (name: 'PPCompGPOS720-v1.33-Complete-debug', ext: 'aar')
+    implementation files('src/main/kotlin/libs/clisitef-android.jar')
+    implementation (name: 'ppcomp_release-1.29.14', ext: 'aar')
     implementation "androidx.concurrent:concurrent-futures:1.1.0"
 
     //implementation "androidx.room:room-runtime:2.4.3"
