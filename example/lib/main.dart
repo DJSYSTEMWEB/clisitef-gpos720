@@ -50,11 +50,13 @@ class _MyAppState extends State<MyApp> {
 
   bool _abortTransaction = false;
 
+  DateTime dataFiscal = DateTime.now();
+
   @override
   void initState() {
     super.initState();
     CliSiTefConfiguration configuration = CliSiTefConfiguration(
-      enderecoSitef: '172.16.93.3',
+      enderecoSitef: '172.16.93.146',
       codigoLoja: '0',
       numeroTerminal: '1',
       cnpjAutomacao: '05481336000137',
@@ -295,12 +297,14 @@ class _MyAppState extends State<MyApp> {
     try {
       setState(() {
         dataReceived = [];
+        dataFiscal = DateTime.now();
       });
+
       Stream<Transaction> paymentStream = await pdv.payment(
         Modalidade.debito.value,
         100,
         cupomFiscal: '1',
-        dataFiscal: DateTime.now(),
+        dataFiscal: dataFiscal,
         // restricoes: '[27;28]',
       );
 
@@ -360,6 +364,86 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  void confirm() async {
+    try {
+      await pdv.confirmTransaction();
+      setState(() {
+        dataReceived = [];
+      });
+    } on Exception catch (e) {
+      if (kDebugMode) {
+        print('Confirmed!');
+        print(e.toString());
+      }
+    }
+  }
+
+  void cancelPendingTransaction() async {
+    try {
+      Stream<Transaction> paymentStream = await pdv.payment(
+        130,
+        0,
+        cupomFiscal: '1',
+        dataFiscal: dataFiscal,
+      );
+
+      if (_isSimulated) {
+        if (kDebugMode) {
+          print('here is simulated');
+        }
+      }
+
+      paymentStream.listen((Transaction transaction) {
+        setState(() {
+          transactionStatus = transaction.event ?? TransactionEvents.unknown;
+          if (transactionStatus == TransactionEvents.transactionConfirm) {
+            pdv.cancelTransaction();
+          }
+        });
+      });
+    } on Exception catch (e) {
+      setState(() {
+        transactionStatus = TransactionEvents.transactionError;
+      });
+      if (kDebugMode) {
+        print(e.toString());
+      }
+    }
+  }
+
+  void confirmPendingTransaction() async {
+    try {
+      Stream<Transaction> paymentStream = await pdv.payment(
+        130,
+        0,
+        cupomFiscal: '1',
+        dataFiscal: dataFiscal,
+      );
+
+      if (_isSimulated) {
+        if (kDebugMode) {
+          print('here is simulated');
+        }
+      }
+
+      paymentStream.listen((Transaction transaction) {
+        setState(() {
+          transactionStatus = transaction.event ?? TransactionEvents.unknown;
+          if (transactionStatus == TransactionEvents.transactionConfirm) {
+            pdv.confirmTransaction();
+          }
+        });
+      });
+    } on Exception catch (e) {
+      setState(() {
+        transactionStatus = TransactionEvents.transactionError;
+      });
+      if (kDebugMode) {
+        print(e.toString());
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -388,6 +472,12 @@ class _MyAppState extends State<MyApp> {
                 ElevatedButton(
                     onPressed: () => cancel(),
                     child: const Text('Cancela ultima transacao')),
+                ElevatedButton(
+                    onPressed: () => cancelPendingTransaction(),
+                    child: const Text('Cancelar transacao pendente')),
+                ElevatedButton(
+                    onPressed: () => confirmPendingTransaction(),
+                    child: const Text('Confirmar transacao pendente')),
                 const Text("PinPadInfo:"),
                 Text(pinPadInfo),
                 const Text("\n\nTransaction Status:"),
